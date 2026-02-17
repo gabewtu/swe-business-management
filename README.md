@@ -1,1 +1,1 @@
-# software-dev-business-management
+# swe-business-management
