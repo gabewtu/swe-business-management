@@ -1,5 +1,5 @@
 # swe-business-management
-Project Title Placeholder  
+Business Management Software
   
 Team Members:  
 Gabriel Walsh  
