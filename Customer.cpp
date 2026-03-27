@@ -76,6 +76,17 @@ void Customer::setEmail(const string& em) {
     email = em;
 }
 
+void Customer::setUserName(const string& uName) {
+    userName = uName;
+}
+
+void Customer::setPassword(const string& plainPassword) {
+    passwordHash = HashUtilities::hashPassword(plainPassword, salt);
+}
+
+bool Customer::verifyPassword(const string& plainPassword) const {
+    return passwordHash == HashUtilities::hashWithSalt(plainPassword, salt);
+}
 
 // Helper methods
 int Customer::findCustomerID(const SearchCriteria& criteria) {
