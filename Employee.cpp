@@ -7,6 +7,7 @@
 #include "Employee.h"
 #include "HashUtilities.h"
 
+// Constructors
 Employee::Employee() {
     firstName = "";
     lastName = "";
@@ -40,6 +41,8 @@ Employee::Employee(string fN, string lN, string email, string uName, string pHas
     expenses = 0;
 }
 
+
+// Getters
 string Employee::getFirstName() const {
     return firstName;
 }
@@ -60,6 +63,8 @@ double Employee::getExpenses() const {
     return expenses;
 }
 
+
+// Setters
 void Employee::setUserName(const string& uName) {
     userName = uName;
 }
@@ -75,7 +80,7 @@ bool Employee::verifyPassword(const string& plainPassword) const {
 bool Employee::addExpenseToDB(double exp) {
 	expenses += exp; // keep object consistent
 
-	// Placeholder for DB logic
+	// Database stuff
 
 	return true;
 }
