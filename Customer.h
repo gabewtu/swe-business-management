@@ -51,6 +51,9 @@ public:
 	void setPhoneNumber(const string& phoneNumber);
 	void setAddress(const string& address);
 	void setEmail(const string& email);
+	void setUserName(const string& uName);
+	void setPassword(const string& plainPassword);
+	bool verifyPassword(const string& plainPassword) const;
 
 	// Description: This method searches for a customer matching the given criteria
 	//              and returns the customerID if found, or -1 if no match exists.
