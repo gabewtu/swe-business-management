@@ -38,24 +38,12 @@ public:
 	Customer(string fN, string lN, string pN, string add, string email, int custID);
 
 	// Getters
-	string getFirstName() const {
-		return firstName;
-	}
-	string getLastName() const {
-		return lastName;
-	}
-	string getPhoneNumber() const {
-		return phoneNumber;
-	}
-	string getAddress() const {
-		return address;
-	}
-	string getEmail() const {
-		return email;
-	}
-	int getCustomerID() const {
-		return customerID;
-	}
+	string getFirstName() const;
+	string getLastName() const;
+	string getPhoneNumber() const;
+	string getAddress() const;
+	string getEmail() const;
+	int getCustomerID() const;
 
 	// Description: This method searches for a customer matching the given criteria
 	//              and returns the customerID if found, or -1 if no match exists.
