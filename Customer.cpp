@@ -23,6 +23,36 @@
 		this->customerID = custID;
 	}
 
+	string Customer::getFirstName() const
+	{
+	    return firstName;
+	}
+	
+	string Customer::getLastName() const
+	{
+	    return lastName;
+	}
+	
+	string Customer::getPhoneNumber() const
+	{
+	    return phoneNumber;
+	}
+	
+	string Customer::getAddress() const
+	{
+	    return address;
+	}
+	
+	string Customer::getEmail() const
+	{
+	    return email;
+	}
+	
+	int Customer::getCustomerID() const
+	{
+	    return customerID;
+	}
+
 	int Customer::findCustomerID(const SearchCriteria& criteria) {
         // This section will be replaced with database functionality
         vector<Customer> storedCustomers = {
