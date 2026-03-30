@@ -38,8 +38,8 @@ public:
 	//				We choose to set customerID to -1 and let strings be empty.
 	Customer();
 
-	// Description: Constructor to instantiate a new Customer object with given data
-	Customer(string fN, string lN, string pN, string add, string email, int custID);
+	// Description: Constructor for loading customer from database (includes stored hash and salt)
+	Customer(string fN, string lN, string pN, string add, string email, string uName, string pHash, string s, int custID);
 
 	// Getters
 	string getFirstName() const;
