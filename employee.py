@@ -136,17 +136,19 @@ class Employee:
 
         return True
 
-    def addExpenseToDB(self, exp):
-        if exp < 0 or self.employeeID == -1:
+    def addExpenseToDB(self, amount, date, description):
+        if amount < 0 or self.employeeID == -1 or not date or not description:
             return False
 
-        self.expenses += exp
+        self.expenses += amount
 
         # TODO: Replace with SQLite update query.
         #
         # Planned DB behavior:
-        # 1. Add the provided expense to the employee's expense total
-        # 2. Update the database
+        # 1. Insert a new expense record into the expenses table using employeeID,
+        #    amount, date, and description
+        # 2. Update the database's total expense value in table
         # 3. Return True if successful
+        # 4. Return False if failed
 
         return True
