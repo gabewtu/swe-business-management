@@ -1,6 +1,6 @@
 import random
 
-
+# Hash utility class for generating salts and hashing passwords
 class HashUtilities:
     SALT_LENGTH = 16
     PEPPER = "Sp1c3y!"
