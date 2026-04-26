@@ -265,34 +265,3 @@ class Employee:
         except Exception:
             conn.close()
             return False
-
-    def addExpenseToDB(self, amount, date, description):
-        """Add an expense record and update the employee's running expense total"""
-        if amount <= 0 or self.employeeID == -1 or not date or not description:
-            return False
-
-        conn = get_connection()
-        cursor = conn.cursor()
-
-        try:
-            # Insert individual expense record
-            cursor.execute('''
-                INSERT INTO expenses (Employee_ID, amount, date, description)
-                VALUES (?, ?, ?, ?)
-            ''', (self.employeeID, amount, date, description))
-
-            # Update running total on the employee record
-            cursor.execute('''
-                UPDATE employees
-                SET expenses = expenses + ?
-                WHERE Employee_ID = ?
-            ''', (amount, self.employeeID))
-
-            conn.commit()
-            self.expenses += amount
-            conn.close()
-            return True
-
-        except Exception:
-            conn.close()
-            return False
