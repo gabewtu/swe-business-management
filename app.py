@@ -1,8 +1,10 @@
 from flask import Flask, render_template, request, jsonify, session
+import re
 from employee import Employee
 from customer import Customer
 from services import Service
 from scheduler import Scheduler
+from invoice import Invoice
 from accounting import Accounting 
 from database import init_db, seed_customers, seed_employees, seed_services, seed_appointments, get_connection
 
@@ -109,6 +111,14 @@ def get_employee_name():
 
     return jsonify({"success": False, "message": "Employee not found."})
 
+# Phone number data validation =======================================================================================
+def isValidPhone(phoneNumber):
+    return re.fullmatch(r"[0-9]{10}", phoneNumber) is not None
+
+# First & Last name data validation ==================================================================================
+def isValidName(name):
+    return re.fullmatch(r"[A-Za-z][A-Za-z\s'.-]*", name) is not None
+    
 # Create customer tab =========================================================================
 @app.route('/create-customer', methods=['POST'])
 def create_customer():
@@ -590,7 +600,7 @@ def save_appointment_expenses():
 
     return jsonify({"success": True, "message": "Expenses saved."})
 
-# Flag an appointment as cancelled or completed ====================================================
+# Flag an appointment as cancelled or completed and generate an invoice if appropriate ==========
 @app.route('/update-appointment-status', methods=['POST'])
 def update_appointment_status():
     data = request.get_json()
@@ -610,32 +620,72 @@ def update_appointment_status():
     if appointment_id == -1 or new_status not in ("Scheduled", "Completed", "Cancelled"):
         return jsonify({"success": False, "message": "Valid appointment ID and status are required."})
 
-    # Update expenses if provided
-    if additional_expenses is not None:
-        try:
-            additional_expenses = float(additional_expenses)
-        except (ValueError, TypeError):
-            return jsonify({"success": False, "message": "Invalid additional expenses value."})
-
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute('''
-                UPDATE appointments SET additional_expenses = ? WHERE Appointment_ID = ?
-            ''', (additional_expenses, appointment_id))
-            conn.commit()
-        except Exception as e:
-            conn.close()
-            return jsonify({"success": False, "message": "Unable to save additional expenses."})
-        conn.close()
+    try:
+        additional_expenses = float(additional_expenses or 0)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "message": "Invalid additional expenses value."})
 
     scheduler = Scheduler()
-    updated = scheduler.updateAppointmentStatus(appointment_id, new_status)
+    updated = scheduler.updateAppointmentStatus(
+        appointment_id,
+        new_status,
+        additional_expenses
+    )
 
-    if updated:
-        return jsonify({"success": True, "message": f"Appointment marked as {new_status}."})
+    if not updated:
+        return jsonify({"success": False, "message": "Unable to update appointment status."})
 
-    return jsonify({"success": False, "message": "Unable to update appointment status."})
+    invoice_message = ""
+
+    if new_status == "Completed":
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute('''
+                SELECT 
+                    a.Appointment_ID,
+                    a.Customer_ID,
+                    a.Service_ID,
+                    s.name AS service_name,
+                    s.cost AS service_cost
+                FROM appointments a
+                JOIN services s ON a.Service_ID = s.Service_ID
+                WHERE a.Appointment_ID = ?
+            ''', (appointment_id,))
+
+            row = cursor.fetchone()
+            conn.close()
+
+            if not row:
+                invoice_message = " Appointment completed, but service information could not be found."
+            else:
+                invoice = Invoice(
+                    customerID=row["Customer_ID"],
+                    appointmentID=row["Appointment_ID"],
+                    serviceID=row["Service_ID"],
+                    serviceName=row["service_name"],
+                    serviceCost=row["service_cost"]
+                )
+
+                invoice_result = invoice.generateInvoice()
+
+                if invoice_result == "created":
+                    invoice_message = f" Invoice #{invoice.invoiceID} created."
+                elif invoice_result == "existing":
+                    invoice_message = f" Invoice #{invoice.invoiceID} already exists."
+                else:
+                    invoice_message = " Appointment completed, but invoice could not be created."
+
+        except Exception as e:
+            print("Auto invoice error:", e)
+            conn.close()
+            invoice_message = " Appointment completed, but invoice generation failed."
+
+    return jsonify({
+        "success": True,
+        "message": f"Appointment marked as {new_status}.{invoice_message}"
+    })
 
 # Show employees in a dropdown menu =====================================================================
 @app.route('/get-employees-list')
@@ -670,6 +720,111 @@ def get_customers_list():
     conn.close()
 
     return jsonify({"success": True, "customers": [dict(r) for r in rows]})
+
+# Get all invoices for employee dashboard =========================================================
+@app.route("/get-all-invoices", methods=["GET"])
+def get_all_invoices():
+    employee_id = session.get("employeeID")
+
+    if not employee_id:
+        return jsonify({
+            "success": False,
+            "message": "Unauthorized."
+        }), 403
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                i.Invoice_ID,
+                i.invoice_date,
+                c.first_name || ' ' || c.last_name AS customer_name,
+                i.service_name,
+                i.service_cost,
+                a.additional_expenses
+            FROM invoices i
+            JOIN customers c ON i.Customer_ID = c.Customer_ID
+            JOIN appointments a ON i.Appointment_ID = a.Appointment_ID
+            ORDER BY i.invoice_date DESC
+        """)
+
+        invoices = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "invoices": invoices
+        })
+
+    except Exception as e:
+        print("Error loading invoices:", e)
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to load invoices."
+        }), 500
+
+# View all invoices in another tab (available for both employees & customers) ========================================================
+@app.route('/invoice/<int:invoice_id>')
+def view_invoice(invoice_id):
+    employee_id = session.get("employeeID")
+    customer_id = session.get("customerID")
+
+    if not employee_id and not customer_id:
+        return "Unauthorized", 403
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT
+            i.Invoice_ID,
+            i.Customer_ID,
+            i.invoice_date,
+            i.service_name,
+            i.service_cost,
+            a.date AS appointment_date,
+            a.additional_expenses,
+            a.description AS appointment_description,
+            c.first_name || ' ' || c.last_name AS customer_name,
+            c.email AS customer_email,
+            c.number AS customer_phone,
+            c.address AS customer_address,
+            e.first_name || ' ' || e.last_name AS employee_name,
+            s.description AS service_description
+        FROM invoices i
+        JOIN appointments a ON i.Appointment_ID = a.Appointment_ID
+        JOIN customers c ON i.Customer_ID = c.Customer_ID
+        JOIN employees e ON a.Employee_ID = e.Employee_ID
+        JOIN services s ON i.Service_ID = s.Service_ID
+        WHERE i.Invoice_ID = ?
+    ''', (invoice_id,))
+
+    invoice = cursor.fetchone()
+    conn.close()
+
+    if not invoice:
+        return "Invoice not found", 404
+
+    invoice = dict(invoice)
+
+    # Employees may view all invoices.
+    # Customers may only view invoices that belong to their own account.
+    if customer_id and not employee_id and invoice["Customer_ID"] != customer_id:
+        return "Unauthorized", 403
+
+    return render_template("invoice_details.html", invoice=invoice)
+
+# Generate reports ==================================================================================================================
+@app.route('/get-master-report')
+def get_master_report():
+    if not session.get("employeeID"):
+        return jsonify({"success": False})
+    
+    report = Accounting.generateMasterReportLastMonth()
+    return jsonify({"success": True, "report": report})
 
 # AI reminder email integration =======================================================================================================
 @app.route('/trigger-reminders', methods=['POST'])
@@ -806,6 +961,38 @@ def get_customer_name():
 def customer_dashboard():
     return render_template('customer_dashboard.html')
 
+# Show customer invoices ===========================================================================================
+@app.route('/get-my-invoices')
+def get_my_invoices():
+    customer_id = session.get("customerID")
+
+    if not customer_id:
+        return jsonify({"success": False, "message": "You must be logged in as a customer."})
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT
+            i.Invoice_ID,
+            i.invoice_date,
+            i.service_name,
+            i.service_cost,
+            a.date AS appointment_date,
+            a.additional_expenses,
+            e.first_name || ' ' || e.last_name AS employee_name
+        FROM invoices i
+        JOIN appointments a ON i.Appointment_ID = a.Appointment_ID
+        JOIN employees e ON a.Employee_ID = e.Employee_ID
+        WHERE i.Customer_ID = ?
+        ORDER BY i.invoice_date DESC, i.Invoice_ID DESC
+    ''', (customer_id,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return jsonify({"success": True, "invoices": [dict(row) for row in rows]})
+
 # Show customer appointments ======================================================================================
 @app.route('/get-my-appointments')
 def get_my_appointments():
@@ -838,5 +1025,6 @@ if __name__ == '__main__':
     seed_employees()
     seed_services()
     seed_appointments()
+    seed_invoices()
 
     app.run(debug=True)
