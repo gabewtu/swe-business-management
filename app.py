@@ -7,7 +7,7 @@ from services import Service
 from scheduler import Scheduler
 from invoice import Invoice
 from accounting import Accounting 
-from database import init_db, seed_customers, seed_employees, seed_services, seed_appointments, get_connection
+from database import init_db, seed_customers, seed_employees, seed_services, seed_appointments, has_data, get_connection
 
 # Main Flask app: manages routing, session handling, and communication between the frontend and database
 app = Flask(__name__)
