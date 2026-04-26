@@ -73,13 +73,17 @@ def init_db():
     ''')
 
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS expenses (
-            Expense_ID    INTEGER PRIMARY KEY AUTOINCREMENT,
-            Employee_ID   INTEGER NOT NULL,
-            amount        REAL NOT NULL,
-            date          TEXT NOT NULL,
-            description   TEXT NOT NULL,
-            FOREIGN KEY (Employee_ID) REFERENCES employees(Employee_ID)
+        CREATE TABLE IF NOT EXISTS invoices (
+            Invoice_ID      INTEGER PRIMARY KEY AUTOINCREMENT,
+            Customer_ID     INTEGER NOT NULL,
+            Appointment_ID  INTEGER NOT NULL UNIQUE,
+            Service_ID      INTEGER NOT NULL,
+            service_name    TEXT NOT NULL,
+            service_cost    REAL NOT NULL DEFAULT 0.0,
+            invoice_date    TEXT NOT NULL,
+            FOREIGN KEY (Customer_ID) REFERENCES customers(Customer_ID),
+            FOREIGN KEY (Appointment_ID) REFERENCES appointments(Appointment_ID),
+            FOREIGN KEY (Service_ID) REFERENCES services(Service_ID)
         )
     ''')
 
@@ -157,51 +161,21 @@ def seed_services():
     cursor = conn.cursor()
 
     services = [
-        ("AC Installation",
-        "Full installation of a new central air conditioning unit, including ductwork connection and system testing.",
-        2400.00),
-        ("AC Repair",
-        "Diagnosis and repair of a malfunctioning air conditioning system, including parts and labor.",
-        320.00),
-        ("AC Tune-Up",
-        "Seasonal maintenance inspection, coil cleaning, refrigerant check, and filter replacement.",
-        120.00),
-        ("Furnace Installation",
-        "Installation of a new gas or electric furnace with thermostat setup and safety inspection.",
-        2100.00),
-        ("Furnace Repair",
-        "Diagnosis and repair of furnace issues including igniter, blower motor, or heat exchanger problems.",
-        290.00),
-        ("Furnace Tune-Up",
-        "Annual furnace inspection, burner cleaning, flue check, and filter replacement.",
-        110.00),
-        ("Heat Pump Installation",
-        "Installation of a new heat pump system for year-round heating and cooling.",
-        3200.00),
-        ("Heat Pump Repair",
-        "Diagnosis and repair of heat pump electrical, refrigerant, or mechanical issues.",
-        350.00),
-        ("Ductwork Inspection & Sealing",
-        "Full duct system inspection with sealing of leaks to improve airflow efficiency.",
-        480.00),
-        ("Ductwork Replacement",
-        "Complete replacement of old or damaged ductwork throughout the home.",
-        1800.00),
-        ("Indoor Air Quality Assessment",
-        "Testing and evaluation of indoor air quality including humidity, VOCs, and particulate levels.",
-        200.00),
-        ("Air Purifier Installation",
-        "Installation of a whole-home air purification system integrated into existing HVAC.",
-        650.00),
-        ("Thermostat Installation",
-        "Installation and programming of a new smart or standard thermostat.",
-        180.00),
-        ("Emergency HVAC Service",
-        "Priority same-day response for HVAC system failures outside of normal business hours.",
-        500.00),
-        ("HVAC System Replacement",
-        "Full replacement of an aging HVAC system including removal of old equipment and installation of new unit.",
-        5500.00),
+        ("AC Installation", "Full installation of a new central air conditioning unit.", 2400.00),
+        ("AC Repair", "Diagnosis and repair of a malfunctioning air conditioning system.", 320.00),
+        ("AC Tune-Up", "Seasonal maintenance inspection and cleaning.", 120.00),
+        ("Air Quality Assessment", "Testing and evaluation of indoor air quality.", 200.00),
+        ("Air Purifier Installation", "Installation of a whole-home air purification system.", 650.00),
+        ("Ductwork Inspection & Sealing", "Full duct system inspection.", 480.00),
+        ("Ductwork Replacement", "Complete replacement of ductwork throughout the home.", 1800.00),
+        ("Furnace Installation", "Installation of a new gas or electric furnace.", 2100.00),
+        ("Furnace Repair", "Diagnosis and repair of furnace issues.", 290.00),
+        ("Furnace Tune-Up", "Annual furnace inspection.", 110.00),
+        ("Heat Pump Installation", "Installation of a new heat pump system.", 3200.00),
+        ("Heat Pump Repair", "Diagnosis and repair of heat pump issues.", 350.00),
+        ("HVAC System Replacement", "Full replacement of an HVAC system.", 5500.00),
+        ("Emergency HVAC Service", "Priority same-day response for HVAC system failures.", 500.00),
+        ("Thermostat Installation", "Installation and programming of a new thermostat.", 180.00),
     ]
 
     for name, description, cost in services:
@@ -215,7 +189,6 @@ def seed_services():
 
     conn.commit()
     conn.close()
-
 
 def seed_appointments():
     """
@@ -232,9 +205,11 @@ def seed_appointments():
     today = datetime.now()
 
     def days_ago(n):
+        """Supporting method for win-back emails"""
         return (today - timedelta(days=n)).strftime("%Y-%m-%d")
 
     def days_from_now(n):
+        """Supporting method for reminder emails"""
         return (today + timedelta(days=n)).strftime("%Y-%m-%d")
 
     def get_customer_id(username):
@@ -253,11 +228,12 @@ def seed_appointments():
         return (row["Service_ID"], row["cost"]) if row else (None, 0.0)
 
     appointments = [
-        ("jdoe",    "kgarner3", "AC Tune-Up",              days_ago(90),    "Completed", 0.00),
-        ("jsmith",  "mmendes3", "Furnace Tune-Up",         days_ago(75),    "Completed", 50.00),
-        ("mbrown",  "gwalsh6",  "Thermostat Installation", days_ago(60),    "Completed", 0.00),
-        ("edavis",  "nyonas3",  "AC Repair",               days_ago(50),    "Completed", 75.00),
-        ("cwilson", "jvelasq3", "Furnace Repair",          days_ago(45),    "Completed", 120.00),
+        ("jthomas", "nyonas3",  "Heat Pump Repair",        days_ago(35),    "Completed", 0.00),
+        ("jdoe",    "kgarner3", "AC Tune-Up",              days_ago(25),    "Completed", 0.00),
+        ("jsmith",  "mmendes3", "Furnace Tune-Up",         days_ago(15),    "Completed", 50.00),
+        ("mbrown",  "gwalsh6",  "Thermostat Installation", days_ago(9),    "Completed", 0.00),
+        ("edavis",  "nyonas3",  "AC Repair",               days_ago(6),    "Completed", 75.00),
+        ("cwilson", "jvelasq3", "Furnace Repair",          days_ago(4),    "Completed", 120.00),
         ("smiller", "kgarner3", "AC Installation",         days_from_now(7),  "Scheduled", 0.00),
         ("dtaylor", "mmendes3", "Heat Pump Installation",  days_from_now(30), "Scheduled", 0.00),
     ]
@@ -274,15 +250,24 @@ def seed_appointments():
             SELECT 1
             FROM appointments
             WHERE Customer_ID = ?
-              AND Employee_ID = ?
-              AND Service_ID = ?
-              AND date = ?
-              AND status = ?
-        ''', (cust_id, emp_id, svc_id, date, status))
+            AND date = ?
+        ''', (cust_id, date))
 
         already_exists = cursor.fetchone()
 
         if already_exists:
+            continue
+
+        cursor.execute('''
+            SELECT 1
+            FROM appointments
+            WHERE Employee_ID = ?
+            AND date = ?
+        ''', (emp_id, date))
+
+        employee_booked = cursor.fetchone()
+
+        if employee_booked:
             continue
 
         cursor.execute('''
@@ -291,6 +276,46 @@ def seed_appointments():
                  cost, additional_expenses, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (cust_id, emp_id, svc_id, date, "", cost, add_exp, status))
+
+    conn.commit()
+    conn.close()
+
+def seed_invoices():
+    """Creates invoices for completed seeded appointments that do not already have one."""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT
+            a.Appointment_ID,
+            a.Customer_ID,
+            a.Service_ID,
+            s.name AS service_name,
+            s.cost AS service_cost,
+            a.date AS invoice_date
+        FROM appointments a
+        JOIN services s ON a.Service_ID = s.Service_ID
+        WHERE a.status = 'Completed'
+        AND a.Appointment_ID NOT IN (
+            SELECT Appointment_ID FROM invoices
+        )
+    ''')
+
+    rows = cursor.fetchall()
+
+    for row in rows:
+        cursor.execute('''
+            INSERT INTO invoices
+                (Customer_ID, Appointment_ID, Service_ID, service_name, service_cost, invoice_date)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            row["Customer_ID"],
+            row["Appointment_ID"],
+            row["Service_ID"],
+            row["service_name"],
+            row["service_cost"],
+            row["invoice_date"]
+        ))
 
     conn.commit()
     conn.close()
