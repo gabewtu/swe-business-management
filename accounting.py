@@ -23,27 +23,22 @@ class Accounting:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT SUM(serviceCost)
+            SELECT SUM(service_cost) as total
             FROM invoices
             WHERE date BETWEEN ? AND ?
         ''', (startDate, endDate))
 
         row = cursor.fetchone()
-
-        if row and row[0]:
-            total_revenue = row[0]
-        else:
-            total_revenue = 0.0
-
         conn.close()
+
+        total = row["total"] if row["total"] else 0.0
 
         return {
             "reportType": "Revenue",
             "startDate": startDate,
             "endDate": endDate,
-            "totalRevenue": total_revenue
+            "totalRevenue": total
         }
-
 
     @staticmethod
     def getExpReportLastMonth():
@@ -53,26 +48,23 @@ class Accounting:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT SUM(amount)
-            FROM expenses
-            WHERE date BETWEEN ? AND ?
+            SELECT SUM(a.additional_expenses) as total
+            FROM invoices i
+            JOIN appointments a ON i.Appointment_ID = a.Appointment_ID
+            WHERE i.invoice_date BETWEEN ? AND ?
         ''', (startDate, endDate))
 
         row = cursor.fetchone()
-        if row and row[0]:
-            total_expenses = row[0]
-        else:
-            total_expenses = 0.0
-
         conn.close()
+        
+        total = row["total"] if row["total"] else 0.0
 
         return {
             "reportType": "Expenses",
             "startDate": startDate,
             "endDate": endDate,
-            "totalExpenses": total_expenses
+            "totalExpenses": total
         }
-
 
     @staticmethod
     def generateMasterReportLastMonth():
