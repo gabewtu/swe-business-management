@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session
 import re
+import os
 from employee import Employee
 from customer import Customer
 from services import Service
@@ -1021,10 +1022,13 @@ def financial_report():
 # Main ============================================================================================================
 if __name__ == '__main__':
     init_db()
-    seed_customers()
-    seed_employees()
-    seed_services()
-    seed_appointments()
-    seed_invoices()
 
-    app.run(debug=True)
+    if not has_data():
+        seed_customers()
+        seed_employees()
+        seed_services()
+        seed_appointments()
+        seed_invoices()
+
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
