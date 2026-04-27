@@ -8,6 +8,8 @@ from database import get_connection
 # Scheduler handles appointment logic, availability checks, and automated email workflows
 api_key = os.environ.get("GEMINI_API_KEY")
 
+TEST_EMAIL = "kgarner3@students.towson.edu"
+
 # Demo safety limits
 MAX_REMINDER_SENDS = 3
 MAX_WINBACK_SENDS = 3
