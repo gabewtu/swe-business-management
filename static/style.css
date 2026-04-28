@@ -82,7 +82,8 @@ button:hover {                                    /*Hovering cursor styling*/
 #loginMessage,                                    /*Message displays for login errors*/
 #changePasswordMessage,
 #customerLoginMessage,
-#customerChangePasswordMessage {
+#customerChangePasswordMessage,
+#modalStatusMessage{
     margin-top: 15px;
     font-weight: bold;
     color: #cc0000;
