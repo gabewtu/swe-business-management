@@ -431,7 +431,7 @@ class Scheduler:
             FROM customers c
             JOIN appointments a ON c.Customer_ID = a.Customer_ID
             GROUP BY c.Customer_ID
-            HAVING MAX(a.date) < date('now', '-30 days')
+            HAVING last_appointment < date('now', '-30 days')
             LIMIT ?
         ''', (MAX_WINBACK_SENDS,))
 
